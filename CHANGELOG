@@ -38,6 +38,9 @@
 - ~MAKUNBOUND~ makes unbound the current variable binding instead of a
   global value.
 - Fix potential deadlock in synchronized hash tables during rehashing.
+- All REPL I/O is performed through ~*QUERY-IO*~ and all debugger I/O is
+  performed through ~*DEBUG-IO*~, while ~*STANDARD-OUTPUT*,
+  ~*STANDARD-INPUT*~ and ~*ERROR-OUTPUT*~ are left for the user
 
 * 24.5.10 changes since 23.9.9
 ** Announcement
