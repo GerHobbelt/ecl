@@ -129,8 +129,15 @@ Emscripten target is a little fickle so keep in mind that:
 - to build emscripten you need to use their SDK that provides the toolchain, and
   set the environment variable EMSDK_PATH
 
-- the optimization level -O0 is forced because otherwsise binaryen miscompiles
-  ECL
+- for the garbage collector to be able to identify roots on the stack,
+  you need to pass the -sBINARYEN_EXTRA_PASSES=--spill-pointers option
+  to the linker for all of your code that might store pointer on the
+  stack (for instance when embedding ECL)
+
+- the optimization level -O0 is used because higher optimization
+  levels seem to interfere with the binaryen options needed to get the
+  garbage collector to work correctly and tend slow down the program
+  (might be worth experimenting with the optimization options)
 
 1. Build the host ECL
 
