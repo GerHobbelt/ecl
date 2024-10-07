@@ -1,5 +1,5 @@
 ;;; -*- mode: Lisp; Base: 10 ; Syntax: ANSI-Common-Lisp ; buffer-read-only: t; -*-
-;;; This is ASDF 3.1.8.9: Another System Definition Facility.
+;;; This is ASDF 3.1.8.10: Another System Definition Facility.
 ;;;
 ;;; Feedback, bug reports, and patches are all welcome:
 ;;; please mail to <asdf-devel@common-lisp.net>.
@@ -7274,7 +7274,7 @@ previously-loaded version of ASDF."
          ;; "3.4.5.67" would be a development version in the official branch, on top of 3.4.5.
          ;; "3.4.5.0.8" would be your eighth local modification of official release 3.4.5
          ;; "3.4.5.67.8" would be your eighth local modification of development version 3.4.5.67
-         (asdf-version "3.1.8.9")
+         (asdf-version "3.1.8.10")
          (existing-version (asdf-version)))
     (setf *asdf-version* asdf-version)
     (when (and existing-version (not (equal asdf-version existing-version)))
@@ -12530,7 +12530,7 @@ Please use UIOP:RUN-PROGRAM instead."
    #:clear-source-registry
    #:ensure-source-registry
    #:process-source-registry
-   #:system-registered-p #:registered-systems #:already-loaded-systems
+   #:system-registered-p #:registered-system #:registered-systems #:already-loaded-systems
    #:resolve-location
    #:asdf-message
    #:*user-cache*
