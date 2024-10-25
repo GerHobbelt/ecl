@@ -203,9 +203,7 @@ cl_makunbound(cl_object sym)
 {
   if (ecl_symbol_type(sym) & ecl_stp_constant)
     FEinvalid_variable("Cannot unbind the constant ~S.", sym);
-  /* FIXME! The semantics of MAKUNBOUND is not very clear with local
-     bindings ... */
-  ECL_SET(sym, OBJNULL);
+  ECL_SETQ(ecl_process_env(), sym, OBJNULL);
   @(return sym);
 }
 
