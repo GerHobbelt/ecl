@@ -293,14 +293,14 @@ static cl_hashkey _hash_generic(cl_object ht, cl_object key) {
 AGAIN:                                                                  \
  e = loop(h, key, hashtable);                                           \
  if (e->key == OBJNULL) {                                               \
-                         cl_index i = hashtable->hash.entries + 1;      \
-                         if (i >= hashtable->hash.limit) {              \
-                                                          hashtable = ecl_extend_hashtable(hashtable); \
-                                                          goto AGAIN;   \
-                                                          }             \
-                         hashtable->hash.entries = i;                   \
-                         e->key = store_key;                            \
-                         }                                              \
+   cl_index i = hashtable->hash.entries + 1;                            \
+   if (i >= hashtable->hash.limit) {                                    \
+     hashtable = ecl_extend_hashtable(hashtable);                       \
+     goto AGAIN;                                                        \
+   }                                                                    \
+   hashtable->hash.entries = i;                                         \
+   e->key = store_key;                                                  \
+ }                                                                      \
  e->value = value;                                                      \
  return hashtable;                                                      \
  }
