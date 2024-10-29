@@ -927,9 +927,9 @@ ecl_extend_hashtable(cl_object hashtable)
     struct ecl_hashtable_entry e =
       copy_entry(old->hash.data + i, old);
     if (e.key != OBJNULL) {
-      new = new->hash.set(new->hash.test == ecl_htt_pack?
-                          SYMBOL_NAME(e.value) : e.key,
-                          new, e.value);
+      new = new->hash.set_unsafe(new->hash.test == ecl_htt_pack?
+                                 SYMBOL_NAME(e.value) : e.key,
+                                 new, e.value);
     }
   }
   return new;
@@ -978,13 +978,13 @@ ecl_extend_hashtable(cl_object hashtable)
       hash->hash.rem = _ecl_remhash_weak;
     }
 #endif
-
+    /* Always bind unsafe variants. */
+    hash->hash.get_unsafe = hash->hash.get;
+    hash->hash.set_unsafe = hash->hash.set;
+    hash->hash.rem_unsafe = hash->hash.rem;
     if (!Null(synchronized)) {
 #ifdef ECL_THREADS
       hash->hash.sync_lock = ecl_make_rwlock(ECL_NIL);
-      hash->hash.get_unsafe = hash->hash.get;
-      hash->hash.set_unsafe = hash->hash.set;
-      hash->hash.rem_unsafe = hash->hash.rem;
       hash->hash.get = _ecl_gethash_sync;
       hash->hash.set = _ecl_sethash_sync;
       hash->hash.rem = _ecl_remhash_sync;
@@ -1107,9 +1107,9 @@ cl__make_hash_table(cl_object test, cl_object size, cl_object rehash_size,
   h->hash.weak = ecl_htt_not_weak;
   h->hash.generic_test = hash_test;
   h->hash.generic_hash = hash_func;
-  h->hash.get = get;
-  h->hash.set = set;
-  h->hash.rem = rem;
+  h->hash.get = h->hash.get_unsafe = get;
+  h->hash.set = h->hash.set_unsafe = set;
+  h->hash.rem = h->hash.rem_unsafe = rem;
   h->hash.size = hsize;
   h->hash.entries = 0;
   h->hash.rehash_size = rehash_size;
@@ -1167,12 +1167,13 @@ ecl_reconstruct_serialized_hashtable(cl_object h) {
     h->hash.set = _ecl_sethash_weak;
     h->hash.rem = _ecl_remhash_weak;
   }
+  /* Always bind unsafe variants. */
+  h->hash.get_unsafe = h->hash.get;
+  h->hash.set_unsafe = h->hash.set;
+  h->hash.rem_unsafe = h->hash.rem;
   if (h->hash.sync_lock != OBJNULL
       && (ecl_t_of(h->hash.sync_lock) == t_lock
           || ecl_t_of(h->hash.sync_lock) == t_rwlock)) {
-    h->hash.get_unsafe = h->hash.get;
-    h->hash.set_unsafe = h->hash.set;
-    h->hash.rem_unsafe = h->hash.rem;
     h->hash.get = _ecl_gethash_sync;
     h->hash.set = _ecl_sethash_sync;
     h->hash.rem = _ecl_remhash_sync;
