@@ -35,6 +35,8 @@
   slightly.
 - Fix buffer overrun in stream encoding for UCS-4. This only occurred
   when the first character was written with a BOM.
+- ~MAKUNBOUND~ makes unbound the current variable binding instead of a
+  global value.
 - Fix potential deadlock in synchronized hash tables during rehashing.
 
 * 24.5.10 changes since 23.9.9
