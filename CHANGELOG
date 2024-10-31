@@ -29,18 +29,27 @@
 
 * Pending changes since 24.5.10
 
-- Many internal improvements and bug fixes for the native compiler
+- Many internal improvements and bug fixes for the native compiler.
+
 - Reduced function call overhead.
+
 - The cross-compilation instructions for iOS and emscripten have changed
   slightly.
+
 - Fix buffer overrun in stream encoding for UCS-4. This only occurred
   when the first character was written with a BOM.
+
 - ~MAKUNBOUND~ makes unbound the current variable binding instead of a
   global value.
+
 - Fix potential deadlock in synchronized hash tables during rehashing.
+
 - All REPL I/O is performed through ~*QUERY-IO*~ and all debugger I/O is
   performed through ~*DEBUG-IO*~, while ~*STANDARD-OUTPUT*,
-  ~*STANDARD-INPUT*~ and ~*ERROR-OUTPUT*~ are left for the user
+  ~*STANDARD-INPUT*~ and ~*ERROR-OUTPUT*~ are left for the user.
+
+- Fix numerous issues in weak hash table implementation, most notably
+  resolve invalid handling of collissions.
 
 * 24.5.10 changes since 23.9.9
 ** Announcement
