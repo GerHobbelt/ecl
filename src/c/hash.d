@@ -553,7 +553,33 @@ _ecl_remhash_generic(cl_object key, cl_object hashtable)
 
 /*
  * WEAK HASH TABLES
+ *
+ * Entries in a weak hash table may disappear without explicit REMHASH. Our
+ * implementation handles collisions with open addressing, that is we put the
+ * colliding element at the first free spot starting from its hash.
+ *
+ * Until recently we've implemented REMHASH by inserting "tombstones", that is
+ * by simply invalidating the entry. Currently after removing the hash we fill
+ * the hole by shifting elements after it to left and that yields some benefits
+ * for scenarios where we frequently add and remove elements.
+ *
+ * Since weak entries may disappear at any time, we need to either fill holes in
+ * GETHASH/SETHASH too, or we need to revert back to inserting "tombstones".
+ * Notice that some functions are common to hash tables with and without weak
+ * entries - for example MAPHASH. These functions assume that entry indexes do
+ * not change while iterating, so we can't shift values in copy_entry unless we
+ * customize these functions too.
+ *
+ * For reasons above weak entries are not normalized to OBJNULL but rather we
+ * leave the weak entry in the same place as a tombstone. SETHASH reuses these
+ * entries while REMHASH behaves the same for all hash tables.
+ *
+ * [key=OBJNULL, value=OBJNULL] - free bucket
+ * [key=ECL_NIL, value=OBJNULL] - tombstone
+ * [key=OBJNULL, value=ECL_NIL] - tombstone copy
+ *
  */
+
 #ifndef ECL_WEAK_HASH
 #define copy_entry(e,h) *(e)
 #endif
@@ -647,6 +673,11 @@ copy_entry(struct ecl_hashtable_entry *e, cl_object h)
 {
   if (e->key == OBJNULL) {
     return *e;
+  } else if (e->value == OBJNULL) {
+    struct ecl_hashtable_entry output = *e;
+    output.key = OBJNULL;
+    output.value = ECL_NIL;
+    return output;
   } else {
     struct ecl_hashtable_entry output = *e;
     switch (h->hash.weak) {
@@ -678,80 +709,84 @@ copy_entry(struct ecl_hashtable_entry *e, cl_object h)
     default:
       return output;
     }
-    h->hash.entries--;
     output.key = OBJNULL;
     output.value = ECL_NIL;
-    return *e = output;
-  }
-}
-
-/* Returns the original entry p, and makes a normalized copy to aux. */
-static struct ecl_hashtable_entry *
-_ecl_weak_hash_loop(cl_hashkey h, cl_object key, cl_object hashtable,
-                    struct ecl_hashtable_entry *aux)
-{
-  cl_index i, hsize = hashtable->hash.size;
-  for (i = h % hsize; ;  i = (i + 1) % hsize) {
-    struct ecl_hashtable_entry *p = hashtable->hash.data + i;
-    struct ecl_hashtable_entry e = *aux = copy_entry(p, hashtable);
-    if (e.key == OBJNULL || _ecl_hash_test(hashtable, key, e.key)) {
-      return p;
-    }
+    e->key = ECL_NIL;
+    e->value = OBJNULL;
+    return output;
   }
 }
 
 static cl_object
 _ecl_gethash_weak(cl_object key, cl_object hashtable, cl_object def)
 {
+  cl_index i, hsize = hashtable->hash.size;
   cl_hashkey h = _ecl_hash_key(hashtable, key);
-  struct ecl_hashtable_entry aux[1];
-  _ecl_weak_hash_loop(h, key, hashtable, aux);
-  if (aux->key == OBJNULL) {
-    return def;
+  struct ecl_hashtable_entry *p, e;
+  for (i = h % hsize; ;  i = (i + 1) % hsize) {
+    p = hashtable->hash.data + i;
+    e = copy_entry(p, hashtable);
+    if (p->key   == OBJNULL) return def;
+    if (p->value == OBJNULL) continue; /* skip the tombstone */
+    if (_ecl_hash_test(hashtable, key, e.key)) return e.value;
   }
-  return aux->value;
 }
 
 static cl_object
 _ecl_sethash_weak(cl_object key, cl_object hashtable, cl_object value)
 {
+  cl_index i, hsize = hashtable->hash.size;
   cl_hashkey h = _ecl_hash_key(hashtable, key);
-  struct ecl_hashtable_entry aux[1];
-  struct ecl_hashtable_entry *e;
+  struct ecl_hashtable_entry e, *p, *f = NULL;
  AGAIN:
-  e = _ecl_weak_hash_loop(h, key, hashtable, aux);
-  if (aux->key == OBJNULL) {
+  for (i = h % hsize; ;  i = (i + 1) % hsize) {
+    p = hashtable->hash.data + i;
+    e = copy_entry(p, hashtable);
+    if (p->key   == OBJNULL) { break; }
+    if (p->value == OBJNULL) { f = p; continue; }
+    if (_ecl_hash_test(hashtable, key, e.key)) {
+      f = p;
+      break;
+    }
+  }
+  if (p->key == OBJNULL && f == NULL) {
     cl_index i = hashtable->hash.entries + 1;
     if (i >= hashtable->hash.limit) {
       hashtable = ecl_extend_hashtable(hashtable);
       goto AGAIN;
     }
     hashtable->hash.entries = i;
-    e->key = _ecl_store_key(hashtable, key);
+    f = p;
   }
-  e->value = _ecl_store_val(hashtable, value);
+  f->key = _ecl_store_key(hashtable, key);
+  f->value = _ecl_store_val(hashtable, value);
   return hashtable;
 }
-
 
 static bool
 _ecl_remhash_weak(cl_object key, cl_object hashtable)
 {
   cl_index i, hsize = hashtable->hash.size;
   cl_hashkey h = _ecl_hash_key(hashtable, key);
+  struct ecl_hashtable_entry *p, e;
   for (i = h % hsize; ;  i = (i + 1) % hsize) {
-    struct ecl_hashtable_entry *p = hashtable->hash.data + i;
-    struct ecl_hashtable_entry e = copy_entry(p, hashtable);
-    if (e.key == OBJNULL) return 0;
+    p = hashtable->hash.data + i;
+    e = copy_entry(p, hashtable);
+    if (p->key == OBJNULL) return 0;
+    /* We could try to shift consecutive tombstones here(!) */
+    if (e.key == OBJNULL) continue;
     if (_ecl_hash_test(hashtable, key, e.key)) {
       cl_index j = (i+1) % hsize, k;
+      struct ecl_hashtable_entry *q, f;
       for (k = 1; k <= hsize; j = (j+1) % hsize, k++) {
-        struct ecl_hashtable_entry *q = hashtable->hash.data + j;
-        struct ecl_hashtable_entry f = copy_entry(q, hashtable);
+        q = hashtable->hash.data + j;
+        f = copy_entry(q, hashtable);
         if (f.key == OBJNULL) {
+          p->key = OBJNULL;
+          p->value = OBJNULL;
           break;
         }
-        cl_hashkey hf = _ecl_hash_key(hashtable, f.value);
+        cl_hashkey hf = _ecl_hash_key(hashtable, f.key);
         cl_index m = hf % hsize;
         cl_index d = (j >= m) ? (j - m) : (j + hsize - m);
         if (k <= d) {
@@ -1418,23 +1453,10 @@ cl_maphash(cl_object fun, cl_object ht)
   j = i;
   do {
     j = (j == 0) ? hsize-1 : j - 1;
-    /* FIXME copy the entry! We don't want map over collected entries. */
-    struct ecl_hashtable_entry e = ht->hash.data[j];
+    struct ecl_hashtable_entry e = copy_entry(ht->hash.data + j, ht);
     if (e.key != OBJNULL) {
       cl_object key = e.key;
       cl_object val = e.value;
-      switch (ht->hash.weak) {
-      case ecl_htt_weak_key:
-        key = si_weak_pointer_value(key);
-        break;
-      case ecl_htt_weak_value:
-        val = si_weak_pointer_value(val);
-        break;
-      case ecl_htt_weak_key_and_value:
-      case ecl_htt_weak_key_or_value:
-        key = si_weak_pointer_value(key);
-        val = si_weak_pointer_value(val);
-      }
       funcall(3, fun, key, val);
     }
   } while (j != i);
@@ -1448,7 +1470,7 @@ si_hash_table_content(cl_object ht)
   cl_object output = ECL_NIL;
   assert_type_hash_table(@[ext::hash-table-content], 2, ht);
   for (i = 0;  i < ht->hash.size;  i++) {
-    struct ecl_hashtable_entry e = ht->hash.data[i];
+    struct ecl_hashtable_entry e = copy_entry(ht->hash.data + i, ht);
     if (e.key != OBJNULL)
       output = ecl_cons(ecl_cons(e.key, e.value), output);
   }
