@@ -572,6 +572,20 @@ _ecl_hash_key(cl_object h, cl_object o) {
   }
 }
 
+static bool
+_ecl_hash_test(cl_object hashtable, cl_object key, cl_object hkey) {
+  switch (hashtable->hash.test) {
+  case ecl_htt_eq:     return (key == hkey);
+  case ecl_htt_eql:    return ecl_eql(key, hkey);
+  case ecl_htt_equal:  return ecl_equal(key, hkey);
+  case ecl_htt_equalp: return ecl_equalp(key, hkey);
+  case ecl_htt_generic:
+    return _ecl_generic_hash_test(hashtable->hash.generic_test, key, hkey);
+  default:
+    ecl_internal_error("Unknown hash test.");
+  }
+}
+
 static void *
 normalize_weak_key_entry(struct ecl_hashtable_entry *e) {
   return (void*)(e->key = e->key->weak.value);
@@ -654,32 +668,8 @@ _ecl_weak_hash_loop(cl_hashkey h, cl_object key, cl_object hashtable,
   for (i = h % hsize; ;  i = (i + 1) % hsize) {
     struct ecl_hashtable_entry *p = hashtable->hash.data + i;
     struct ecl_hashtable_entry e = *aux = copy_entry(p, hashtable);
-    if (e.key == OBJNULL) {
+    if (e.key == OBJNULL || _ecl_hash_test(hashtable, key, e.key)) {
       return p;
-    }
-    switch (hashtable->hash.test) {
-    case ecl_htt_eq:
-      if (e.key == key)
-        return p;
-      break;
-    case ecl_htt_eql:
-      if (ecl_eql(e.key, key))
-        return p;
-      break;
-    case ecl_htt_equal:
-      if (ecl_equal(e.key, key))
-        return p;
-      break;
-    case ecl_htt_equalp:
-      if (ecl_equalp(e.key, key))
-        return p;
-      break;
-    case ecl_htt_generic:
-      if (_ecl_generic_hash_test(hashtable->hash.generic_test, e.key, key))
-        return p;
-      break;
-    default:
-        ecl_internal_error("Unknown hash test.");
     }
   }
 }
@@ -741,32 +731,7 @@ _ecl_remhash_weak(cl_object key, cl_object hashtable)
     if (e.key == OBJNULL) {
       return 0;
     }
-    bool found = FALSE;
-    switch (hashtable->hash.test) {
-    case ecl_htt_eq:
-      if (e.key == key)
-        found = TRUE;
-      break;
-    case ecl_htt_eql:
-      if (ecl_eql(e.key, key))
-        found = TRUE;
-      break;
-    case ecl_htt_equal:
-      if (ecl_equal(e.key, key))
-        found = TRUE;
-      break;
-    case ecl_htt_equalp:
-      if (ecl_equalp(e.key, key))
-        found = TRUE;
-      break;
-    case ecl_htt_generic:
-      if (_ecl_generic_hash_test(hashtable->hash.generic_test, e.key, key))
-        found = TRUE;
-      break;
-    default:
-        ecl_internal_error("Unknown hash test.");
-    }
-    if (found) {
+    if (_ecl_hash_test(hashtable, key, e.key)) {
       cl_index j = (i+1) % hsize, k;
       for (k = 1; k <= hsize; j = (j+1) % hsize, k++) {
         struct ecl_hashtable_entry *q = hashtable->hash.data + j;
