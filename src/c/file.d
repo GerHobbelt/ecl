@@ -6331,7 +6331,7 @@ init_file(void)
   ECL_SET(@'*error-output*', error_output);
 
   cl_core.terminal_io = aux 
-    = cl_make_two_way_stream(standard_input, error_output);
+    = cl_make_two_way_stream(standard_input, standard_output);
 
   ECL_SET(@'*terminal-io*', aux);
   aux = cl_make_synonym_stream(@'*terminal-io*');
