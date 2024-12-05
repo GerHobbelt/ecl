@@ -51,6 +51,8 @@
 - Fix numerous issues in weak hash table implementation, most notably
   resolve invalid handling of collissions.
 
+- Update bundled libgc-8.2.4 to libgc-8.2.8.
+
 * 24.5.10 changes since 23.9.9
 ** Announcement
 Dear Community,
