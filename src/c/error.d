@@ -502,8 +502,8 @@ universal_error_handler(cl_object continue_string, cl_object datum,
   stream = cl_core.error_output;
   if (!Null(stream)) {
     ecl_bds_bind(the_env, @'*print-readably*', ECL_NIL);
-    ecl_bds_bind(the_env, @'*print-level*', ecl_make_fixnum(3));
-    ecl_bds_bind(the_env, @'*print-length*', ecl_make_fixnum(3));
+    ecl_bds_bind(the_env, @'*print-level*', ecl_make_fixnum(4));
+    ecl_bds_bind(the_env, @'*print-length*', ecl_make_fixnum(8));
     ecl_bds_bind(the_env, @'*print-circle*', ECL_NIL);
     ecl_bds_bind(the_env, @'*print-base*', ecl_make_fixnum(10));
     writestr_stream("\n;;; Unhandled lisp initialization error",
