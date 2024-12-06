@@ -7380,11 +7380,6 @@ printf "%s\n" "#define ECL_EXTERNALIZABLE /**/" >>confdefs.h
 fi
 
 fi
-if test ${enable_smallcons} = "yes" ; then
-
-printf "%s\n" "#define ECL_SMALL_CONS /**/" >>confdefs.h
-
-fi
 
 
 
