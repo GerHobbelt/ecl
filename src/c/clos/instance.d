@@ -520,7 +520,7 @@ cl_class_of(cl_object x)
      * optimize the slot access */
     cl_object v = @'clos::+builtin-classes+'->symbol.value;
     cl_object output = Null(v)?
-      cl_find_class(1,@'t') :
+      cl_find_class(1, ECL_T) :
       v->vector.self.t[index];
     @(return output);
   }

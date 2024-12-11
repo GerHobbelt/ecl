@@ -712,7 +712,7 @@ ecl_symbol_to_elttype(cl_object x)
   else if (x == @'ext::integer64')
     return(ecl_aet_i64);
 #endif
-  else if (x == @'t')
+  else if (x == ECL_T)
     return(ecl_aet_object);
   else if (x == ECL_NIL) {
     FEerror("ECL does not support arrays with element type NIL", 0);

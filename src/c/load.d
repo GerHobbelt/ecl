@@ -118,7 +118,7 @@ si_load_source(cl_object source, cl_object verbose, cl_object print, cl_object e
        try to close the stream, and then jump to next catch
        point */
     if (strm != source)
-      cl_close(3, strm, @':abort', @'t');
+      cl_close(3, strm, @':abort', ECL_T);
   } ECL_UNWIND_PROTECT_THREAD_SAFE_END;
   @(return ECL_NIL);
 }
@@ -193,7 +193,7 @@ si_load_bytecodes(cl_object source, cl_object verbose, cl_object print, cl_objec
        try to close the stream, and then jump to next catch
        point */
     if (strm != source) {
-      cl_close(3, strm, @':abort', @'t');
+      cl_close(3, strm, @':abort', ECL_T);
     }
   } ECL_UNWIND_PROTECT_THREAD_SAFE_END;
   @(return ECL_NIL);
