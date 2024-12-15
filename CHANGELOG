@@ -53,8 +53,6 @@
 
 - Update bundled libgc-8.2.4 to libgc-8.2.8.
 
-- Remove the feature "small cons" and its build flags
-
 * 24.5.10 changes since 23.9.9
 ** Announcement
 Dear Community,

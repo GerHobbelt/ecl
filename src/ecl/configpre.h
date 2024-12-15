@@ -48,6 +48,9 @@
 /* ECL_SIGNED_ZERO */
 #undef ECL_SIGNED_ZERO
 
+/* ECL_SMALL_CONS */
+#undef ECL_SMALL_CONS
+
 /* ECL_SSE2 */
 #undef ECL_SSE2
 
