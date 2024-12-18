@@ -56,13 +56,13 @@ _ecl_write_bclosure(cl_object x, cl_object stream)
   if (ecl_print_readably()) {
     _ecl_write_bytecodes_readably(x->bclosure.code, stream, x->bclosure.lex);
   } else {
-    cl_object name = x->bytecodes.name;
+    cl_object name = x->bclosure.code->bytecodes.name;
     writestr_stream("#<bytecompiled-closure ", stream);
     if (name != ECL_NIL) {
       si_write_ugly_object(name, stream);
-    } else {
-      _ecl_write_addr((void *)x, stream);
+      writestr_stream(" ", stream);
     }
+    _ecl_write_addr((void *)x, stream);
     ecl_write_char('>', stream);
   }
 }
