@@ -161,10 +161,12 @@ struct ecl_interrupt_struct {
 # define cl_env (*ecl_process_env())
   extern ECL_API cl_env_ptr ecl_process_env(void) __attribute__((const));
   extern ECL_API cl_env_ptr ecl_process_env_unsafe(void);
+  extern ECL_API void ecl_set_process_env(cl_env_ptr env);
 #else
 # define cl_env (*cl_env_p)
 # define ecl_process_env() cl_env_p
 # define ecl_process_env_unsafe() cl_env_p
+# define ecl_set_process_env(env) cl_env_p = env
   extern ECL_API cl_env_ptr cl_env_p;
 #endif
 
@@ -221,6 +223,7 @@ struct cl_core_struct {
 
         cl_object system_properties;
 
+        cl_env_ptr first_env;
 #ifdef ECL_THREADS
         cl_object processes;
         ecl_mutex_t processes_lock;
@@ -256,6 +259,13 @@ struct cl_core_struct {
 };
 
 extern ECL_API struct cl_core_struct cl_core;
+
+/* memory.c */
+extern ECL_API void *ecl_malloc(cl_index n);
+extern ECL_API void *ecl_realloc(void *ptr, cl_index o, cl_index n);
+extern ECL_API void ecl_free(void *ptr);
+extern ECL_API void ecl_copy(void *dst, void *src, cl_index ndx);
+#define ecl_free_unsafe(x) ecl_free(x);
 
 /* alloc.c / alloc_2.c */
 
@@ -311,7 +321,7 @@ extern ECL_API cl_object APPLY(cl_narg n, cl_objectfn, cl_object *x);
 
 /* array.c */
 
-extern ECL_API cl_object ecl_make_stack(cl_index dim);
+extern ECL_API cl_object ecl_make_vector(cl_index dim);
 extern ECL_API cl_object cl_row_major_aref(cl_object x, cl_object i);
 extern ECL_API cl_object si_row_major_aset(cl_object x, cl_object i, cl_object v);
 extern ECL_API cl_object si_make_vector(cl_object etype, cl_object dim, cl_object adj, cl_object fillp, cl_object displ, cl_object disploff);
@@ -521,7 +531,7 @@ extern ECL_API cl_object si_eval_with_env _ECL_ARGS((cl_narg narg, cl_object for
 
 /* interpreter.c */
 
-extern ECL_API cl_object si_interpreter_stack _ECL_ARGS((cl_narg narg, ...));
+extern ECL_API cl_object si_interpreter_stack();
 extern ECL_API cl_object ecl_stack_frame_open(cl_env_ptr env, cl_object f, cl_index size);
 extern ECL_API void ecl_stack_frame_push(cl_object f, cl_object o);
 extern ECL_API void ecl_stack_frame_push_values(cl_object f);
@@ -734,7 +744,7 @@ extern ECL_API void ecl_force_output(cl_object strm);
 extern ECL_API void ecl_finish_output(cl_object strm);
 extern ECL_API void ecl_clear_input(cl_object strm);
 extern ECL_API void ecl_clear_output(cl_object strm);
-extern ECL_API bool ecl_listen_stream(cl_object strm);
+extern ECL_API int ecl_listen_stream(cl_object strm);
 extern ECL_API cl_object ecl_file_position(cl_object strm);
 extern ECL_API cl_object ecl_file_position_set(cl_object strm, cl_object disp);
 extern ECL_API cl_object ecl_file_length(cl_object strm);
