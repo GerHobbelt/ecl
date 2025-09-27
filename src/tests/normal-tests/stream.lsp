@@ -33,7 +33,7 @@
   (lambda (stream vector)
     (labels ((call (name fun elt &optional (exp elt))
                (let ((out (funcall fun stream elt)))
-                 (is (eql out exp) "~a: ~a not eql to ~a" name out exp)))
+                 (is (eql out exp) "~a: ~s not eql to ~s" name out exp)))
              (test (elt)
                (call :peek peek (funcall key elt))
                (call :read read (funcall key elt))
@@ -81,6 +81,20 @@
              (ext:unread-byte s i)
              (cl:unread-char (code-char i) s)))))
 
+(defun test-byte-output-stream (stream n)
+  (dotimes (i n)
+    (finishes (cl:write-byte (char-code #\x) stream))))
+
+(defun test-char-output-stream (stream n)
+  (dotimes (i n)
+    (finishes (cl:write-char #\X stream))))
+
+(defun test-bivalent-output-stream (stream n)
+  (dotimes (i n)
+    (if (zerop (random 2))
+        (finishes (cl:write-byte (char-code #\a) stream))
+        (finishes (cl:write-char #\A stream)))))
+
 (defun make-sequence-io-stream (vector &optional format)
   (make-two-way-stream
    (ext:make-sequence-input-stream vector :external-format format)
@@ -93,7 +107,8 @@
                                 :initial-contents values
                                 :fill-pointer 8))
          (stream (make-sequence-io-stream vector)))
-    (test-byte-input-stream stream vector)))
+    (test-byte-input-stream stream vector)
+    (test-byte-output-stream stream 8)))
 
 (deftest stream.smoke-read-char ()
   (let* ((values (map 'vector #'char-code "ABCDEFGHIJKLMNOP"))
@@ -101,7 +116,8 @@
                                 :initial-contents values
                                 :fill-pointer 8))
          (stream (make-sequence-io-stream vector :ascii)))
-    (test-char-input-stream stream vector)))
+    (test-char-input-stream stream vector)
+    (test-char-output-stream stream 8)))
 
 (deftest stream.smoke-bivalent ()
   (let* ((values (map 'vector #'char-code "ABCDEFGHIJKLMNOP"))
@@ -109,23 +125,62 @@
                                 :initial-contents values
                                 :fill-pointer 8))
          (stream (make-sequence-io-stream vector :ascii)))
-    (test-bivalent-input-stream stream vector)))
+    (test-bivalent-input-stream stream vector)
+    (test-bivalent-output-stream stream 8)))
+
+;;; Ensure that we make a "clean" error (i.e not a segfault) when bivalent
+;;; stream has bytes that can't be casted to characters.
+(deftest stream.error-bivalent ()
+  (let* ((values (loop repeat 16 collect char-code-limit))
+         (vector (make-array 16 :element-type '(unsigned-byte 64)
+                                :initial-contents values
+                                :fill-pointer 8))
+         (stream (make-sequence-io-stream vector nil)))
+    (signals error (test-char-input-stream stream vector))
+    (finishes (test-byte-input-stream stream vector))
+    (finishes (test-char-output-stream stream 8))
+    (finishes (test-char-input-stream stream (subseq vector 8 16)))))
 
 ;;; Ensure that MAKE-SEQUENCE-INPUT-STREAM and MAKE-SEQUENCE-OUTPUT-STREAM can
 ;;; take bytes that are larger than any character.
 
 (deftest stream.binary-sequence ()
-  (loop with values = (loop for i from 0 below 16 collect i)
+  (loop with values = (loop for i from 0 below 16 collect (char-code #\Z))
         for (elt-type . format) in '(((unsigned-byte 8) . nil)
                                      ((unsigned-byte 16) . nil)
                                      ((unsigned-byte 32) . nil)
                                      ((unsigned-byte 64) . nil)
                                      ((unsigned-byte 16) . :ucs-2)
                                      ((unsigned-byte 32) . :ucs-4))
-        for vector = (make-array 16 :element-type elt-type :initial-contents values)
+        for vector = (make-array 16 :element-type elt-type
+                                    :initial-contents values
+                                    :fill-pointer 12)
         for stream = (finishes (make-sequence-io-stream vector format))
         when (and stream (null format))
-          do (finishes (test-byte-input-stream stream vector))))
+          do (finishes (test-byte-input-stream stream vector))
+             (finishes (test-byte-output-stream stream 4))))
+
+;;; Ensure that MAKE-SEQUENCE-INPUT-STREAM and MAKE-SEQUENCE-OUTPUT-STREAM can
+;;; take byte and char sequences and use them as bivalent streams.
+
+(deftest stream.bivalent-sequence ()
+  (loop with char-values = "0123456789abcdef"
+        with byte-values = (map 'vector #'char-code char-values)
+        for (elt-type values format) in `(((unsigned-byte  8) ,byte-values nil)
+                                          ((unsigned-byte 16) ,byte-values nil)
+                                          ((unsigned-byte 32) ,byte-values nil)
+                                          ((unsigned-byte 64) ,byte-values nil)
+                                          (character          ,char-values :default))
+        for vector = (make-array 16 :element-type elt-type
+                                    :initial-contents values
+                                    :fill-pointer 12)
+        for result = (subseq byte-values 0 12)
+        for stream = (finishes (make-sequence-io-stream vector format))
+        when stream
+          do (finishes (test-bivalent-input-stream stream result))
+             (finishes (test-bivalent-output-stream stream 4))))
+
+;;; Ensure that we punt on invalid sequence stream types.
 
 (deftest stream.invalid-sequence ()
   (loop with values = (loop for i from 0 below 16 collect i)
