@@ -358,8 +358,9 @@ ecl_interpret(cl_object frame, cl_object closure, cl_object bytecodes)
   const cl_env_ptr the_env = frame->frame.env;
   volatile cl_index frame_index = 0;
   cl_opcode *vector = (cl_opcode*)bytecodes->bytecodes.code;
-  cl_object *data = bytecodes->bytecodes.data->vector.self.t;
   cl_object lex_env = closure, lcl_env = ECL_NIL;
+  cl_object dat_env = bytecodes->bytecodes.data;
+  cl_object *data = Null(dat_env) ? NULL : dat_env->vector.self.t;
   cl_object reg0 = ECL_NIL, reg1 = ECL_NIL;
   cl_index narg = 0;
   cl_index nlcl = ecl_fixnum(bytecodes->bytecodes.nlcl);
@@ -1089,13 +1090,13 @@ ecl_interpret(cl_object frame, cl_object closure, cl_object bytecodes)
 
     CASE(OP_BLOCK); {
       GET_DATA(reg0, vector, data);
-      reg1 = ecl_make_fixnum(the_env->frame_id++);
+      reg1 = ecl_make_fixnum(the_env->frs_stack.frame_id++);
       bind_frame(lcl_env, reg1, reg0);
       THREAD_NEXT;
     }
     CASE(OP_DO); {
       reg0 = ECL_NIL;
-      reg1 = ecl_make_fixnum(the_env->frame_id++);
+      reg1 = ecl_make_fixnum(the_env->frs_stack.frame_id++);
       bind_frame(lcl_env, reg1, reg0);
       THREAD_NEXT;
     }
@@ -1270,13 +1271,13 @@ ecl_interpret(cl_object frame, cl_object closure, cl_object bytecodes)
         vector = (cl_opcode *)ECL_STACK_POP_UNSAFE(the_env);
         unwind_lcl(lcl_env, ECL_STACK_POP_UNSAFE(the_env));
         reg0 = the_env->values[0];
-        ECL_STACK_PUSH(the_env, ecl_make_fixnum(the_env->nlj_fr - the_env->frs_top));
+        ECL_STACK_PUSH(the_env, ecl_make_fixnum(the_env->frs_stack.nlj_fr - the_env->frs_stack.top));
         goto PUSH_VALUES;
       }
       THREAD_NEXT;
     }
     CASE(OP_PROTECT_NORMAL); {
-      ecl_bds_unwind(the_env, the_env->frs_top->frs_bds_top_index);
+      ecl_bds_unwind(the_env, the_env->frs_stack.top->frs_bds_ndx);
       ecl_frs_pop(the_env);
       (void)ECL_STACK_POP_UNSAFE(the_env);
       unwind_lcl(lcl_env, ECL_STACK_POP_UNSAFE(the_env));
@@ -1290,7 +1291,7 @@ ecl_interpret(cl_object frame, cl_object closure, cl_object bytecodes)
       reg0 = the_env->values[0];
       n = ecl_fixnum(ECL_STACK_POP_UNSAFE(the_env));
       if (n <= 0)
-        ecl_unwind(the_env, the_env->frs_top + n);
+        ecl_unwind(the_env, the_env->frs_stack.top + n);
       THREAD_NEXT;
     }
 
@@ -1325,9 +1326,9 @@ ecl_interpret(cl_object frame, cl_object closure, cl_object bytecodes)
       GET_DATA(form, vector, data);
       SETUP_ENV(the_env);
       the_env->values[0] = reg0;
-      n = ecl_stack_push_values(the_env);
+      n = ecl_data_stack_push_values(the_env);
       call_stepper(the_env, form, ecl_make_fixnum(1));
-      ecl_stack_pop_values(the_env, n);
+      ecl_data_stack_pop_values(the_env, n);
       reg0 = the_env->values[0];
       THREAD_NEXT;
     }
@@ -1345,9 +1346,9 @@ ecl_interpret(cl_object frame, cl_object closure, cl_object bytecodes)
       cl_index n;
       SETUP_ENV(the_env);
       the_env->values[0] = reg0;
-      n = ecl_stack_push_values(the_env);
+      n = ecl_data_stack_push_values(the_env);
       call_stepper(the_env, ECL_NIL, ecl_make_fixnum(-1));
-      ecl_stack_pop_values(the_env, n);
+      ecl_data_stack_pop_values(the_env, n);
       reg0 = the_env->values[0];
       THREAD_NEXT;
     }
