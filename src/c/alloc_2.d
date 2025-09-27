@@ -551,7 +551,7 @@ void init_type_info (void)
 #endif
   init_tm(t_codeblock, "CODEBLOCK", sizeof(struct ecl_codeblock), -1);
   init_tm(t_foreign, "FOREIGN", sizeof(struct ecl_foreign), 2);
-  init_tm(t_frame, "STACK-FRAME", sizeof(struct ecl_stack_frame), 2);
+  init_tm(t_frame, "STACK-FRAME", sizeof(struct ecl_stack_frame), 0);
   init_tm(t_weak_pointer, "WEAK-POINTER", sizeof(struct ecl_weak_pointer), 0);
 #ifdef ECL_SSE2
   init_tm(t_sse_pack, "SSE-PACK", sizeof(struct ecl_sse_pack), 0);
@@ -709,8 +709,6 @@ void init_type_info (void)
     to_bitmap(&o, &(o.foreign.data)) |
     to_bitmap(&o, &(o.foreign.tag));
   type_info[t_frame].descriptor =
-    to_bitmap(&o, &(o.frame.stack)) |
-    to_bitmap(&o, &(o.frame.base)) |
     to_bitmap(&o, &(o.frame.env));
   type_info[t_weak_pointer].descriptor = 0;
 #ifdef ECL_SSE2
@@ -1162,9 +1160,9 @@ ecl_mark_env(struct cl_env_struct *env)
     GC_push_conditional((void *)env->frs_org, (void *)(env->frs_top+1), 1);
     GC_set_mark_bit((void *)env->frs_org);
   }
-  if (env->bds_top) {
-    GC_push_conditional((void *)env->bds_org, (void *)(env->bds_top+1), 1);
-    GC_set_mark_bit((void *)env->bds_org);
+  if (env->bds_stack.top) {
+    GC_push_conditional((void *)env->bds_stack.org, (void *)(env->bds_stack.top+1), 1);
+    GC_set_mark_bit((void *)env->bds_stack.org);
   }
   /* When not using threads, "env" is mmaped or statically allocated. */
   GC_push_all((void *)env, (void *)(env + 1));
