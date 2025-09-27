@@ -352,8 +352,8 @@ ffi_call_int (ffi_cif *cif, void (*fn)(void), void *rvalue,
 	  size_t za = FFI_ALIGN (z, FFI_SIZEOF_ARG);
 	  size_t align = FFI_SIZEOF_ARG;
 
-	  /* Issue 434: For thiscall and fastcall, if the paramter passed
-	     as 64-bit integer or struct, all following integer paramters
+	  /* Issue 434: For thiscall and fastcall, if the parameter passed
+	     as 64-bit integer or struct, all following integer parameters
 	     will be passed on stack.  */
 	  if ((cabi == FFI_THISCALL || cabi == FFI_FASTCALL)
 	      && (t == FFI_TYPE_SINT64
@@ -491,8 +491,8 @@ ffi_closure_inner (struct closure_frame *frame, char *stack)
 	  if (t == FFI_TYPE_STRUCT && ty->alignment >= 16)
 	    align = 16;
 
-	  /* Issue 434: For thiscall and fastcall, if the paramter passed
-	     as 64-bit integer or struct, all following integer paramters
+	  /* Issue 434: For thiscall and fastcall, if the parameter passed
+	     as 64-bit integer or struct, all following integer parameters
 	     will be passed on stack.  */
 	  if ((cabi == FFI_THISCALL || cabi == FFI_FASTCALL)
 	      && (t == FFI_TYPE_SINT64

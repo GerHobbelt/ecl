@@ -1115,8 +1115,8 @@ Date:   Wed May 2 06:19:58 2018 -0700
     
     * i386: Properly passing integer parameters in registers
     
-    For thiscall and fastcall, if the paramter passed as 64-bit integer or
-    struct, all following integer paramters will be passed on stack.
+    For thiscall and fastcall, if the parameter passed as 64-bit integer or
+    struct, all following integer parameters will be passed on stack.
     
     * test: Add ABI_ATTR to callback_code
     
