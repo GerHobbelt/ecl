@@ -564,7 +564,7 @@
 ;;;;     caused by an encoding buffer that is too small.
 
 (test mix.0030.write-char-encode-buffer
-  (is (equal (with-open-file (s "/tmp/whatever.txt"
+  (is (equal (with-open-file (s "whatever.txt"
                                 :if-does-not-exist :create
                                 :if-exists :supersede
                                 :external-format :ucs-4
@@ -655,3 +655,67 @@
          (result (translate-logical-pathname pathname))
          (expect #P"/hello/bonjour/hi/barev/what/greetings.me"))
     (is (equalp result expect))))
+
+;;; Reported by: Daniel Kochmański
+;;; Created: 2026-03-02
+;;; Issue: https://gitlab.com/embeddable-common-lisp/ecl/-/issues/813
+;;; Description
+;;;
+;;;     Reader does not handle correctly escaped characters when the
+;;;     READTABLE-CASE is :INVERT.
+(deftest mix.0033.preserve-escaped-characters ()
+  (let ((*readtable* (copy-readtable)))
+    (setf (readtable-case *readtable*) :invert)
+    (is (string=
+         (symbol-name (read-from-string "DANIEL|--xXx--|MANSKI"))
+         "daniel--xXx--manski"))))
+
+;;; Reported by: Daniel Kochmański
+;;; Created: 2026-03-02
+;;; Issue: https://gitlab.com/embeddable-common-lisp/ecl/-/issues/814
+;;; Description
+;;;
+;;;     Reader allows for multiple package prefixes and uses only the last one.
+;;;     For example FOO::BAR::QUX is equivalent to BAR:QUX (FOO must exist).
+(deftest mix.0034.dont-allow-invalid-package-prefixes ()
+  (signals reader-error (read-from-string "CL-USER::CL::LIST")))
+
+(deftest mix.0035.bignum-eql-sanity ()
+  (is (eql (1- most-negative-fixnum) (1- most-negative-fixnum)))
+  (is (eql (1+ most-positive-fixnum) (1+ most-positive-fixnum))))
+
+;;; Reported by: Daniel Kochmański
+;;; Created: 2026-03-05
+;;; Description
+;;;
+;;;     Instead of copying dispatch character sub-tables we assign them.
+(deftest mix.0036.reader.false-sharing ()
+  (flet ((set-macro-char (disp sub value table)
+           (set-dispatch-macro-character
+            disp sub #'(lambda (stream sub-char argument)
+                         (declare (ignore stream sub-char argument))
+                         value)
+            table)))
+    (let ((t1 (copy-readtable)))
+      (make-dispatch-macro-character #\! nil t1)
+      (set-macro-char #\! #\a :one t1)
+      (let ((t2 (copy-readtable t1)))
+        (set-macro-char #\! #\b :two t1)
+        (set-syntax-from-char #\? #\! t2 t1)
+        (set-macro-char #\? #\b :tri t2)
+        (set-macro-char #\! #\c :fou t1)
+        (let ((*readtable* t1))
+          (is (eql :one (read-from-string "!a")))
+          (is (eql :two (read-from-string "!b"))
+              "reads to ~s" (read-from-string "!b"))
+          (is (eql :fou (read-from-string "!c")))
+          (is (eql '?a  (read-from-string "?a")))
+          (is (eql '?b  (read-from-string "?b")))
+          (is (eql '?c  (read-from-string "?c"))))
+        (let ((*readtable* t2))
+          (is (eql :one  (read-from-string "!a")))
+          (signals error (read-from-string "!b"))
+          (signals error (read-from-string "!c"))
+          (is (eql :one  (read-from-string "?a")))
+          (is (eql :tri  (read-from-string "?b")))
+          (signals error (read-from-string "?c")))))))
